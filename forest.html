@@ -1,0 +1,143 @@
+<!DOCTYPE html>  
+<html>
+<head>
+  <meta charset=utf-8>
+  <title>Assignment 2</title>    
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.147.0/three.min.js"></script> 
+  <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.9/dat.gui.min.js"></script>
+
+  <script>
+/*
+COSC3306
+Assignment 2
+By: John Bitonti
+
+The goal of this code is to create a forest environment in a 3D space. I wanted to create a forest that is different each time it is generated.
+I achieved this using random numbers to plot the coordinates of the trees, determine the trees height, the rotation of the trunk, and the size and color of the leaves.
+
+gradient skybox textures made using https://angrytools.com/gradient/image/
+*/
+      window.onload = function() { 
+         
+      var renderer = new THREE.WebGLRenderer(); // Use WebGL
+      //enable shadows
+      renderer.shadowMap.enabled = true;
+  
+      renderer.setSize(2200, 1100); // Scene size 
+      document.body.appendChild(renderer.domElement); //add to webpage 
+
+      var scene = new THREE.Scene(); //create scene
+      //add fog
+      scene. fog = new THREE. Fog( 0xffffD0, 0.005, 2000 );
+
+      var camera = new THREE.PerspectiveCamera( //camera
+          60,             // Field of view
+          window.innerWidth / window.innerHeight,      // Aspect ratio
+          0.1,            // Near plane
+          2000           // Far plane
+      );
+    //orbital camera controls
+      const orbit = new THREE.OrbitControls(camera,renderer.domElement);
+  //default camera position
+      camera.position.set(0,200,750);
+      orbit.update();
+  //point light to cast shadows from the trees
+      const light = new THREE.PointLight( 0xFFF2AB, 2, 1200 ); //set the color, intensity and distance of the point light
+      light.position.set( 400, 600, 750 ); //position of the point light
+      light.castShadow = true; 
+      scene.add( light );
+  //ambient light
+      const ambientLight = new THREE.AmbientLight(0xFFF2AB,0.6);//set color and brightness of the ambient lighting
+      scene.add(ambientLight);
+  //skybox made of 6 gradient images to surround the scene
+      var skybox = new THREE.CubeTextureLoader().load([     
+         "skybox/gradient.png",  
+         "skybox/gradient.png",  
+         "skybox/up.png",  
+         "skybox/dn.png",  
+         "skybox/gradient.png",  
+         "skybox/gradient.png"
+      ]);
+      scene.background = skybox;
+//ground plane  
+        //create the plane geometry and map the texture
+        const planeGeometry = new THREE.PlaneGeometry(1500,1100);
+        const planeMaterial = new THREE.MeshStandardMaterial({
+            color:0x00861d,// green ground color
+            side: THREE.DoubleSide//make the bottom of the plane visible
+        });
+        //create the plane and set it to receive shadows
+        const plane = new THREE.Mesh(planeGeometry, planeMaterial);
+        plane.receiveShadow=true;
+        scene.add(plane);
+        //make the plane lie flat on the X axis
+        plane.rotation.x = -0.5 *Math.PI;
+
+//creating the 100 trees
+        for(var x=0;x<100;x++){
+            //random tree location X and Z coordinates 
+            var treeX= Math.floor((Math.random()*1200.00)-600);
+            var treeZ= Math.floor((Math.random()*1000.00)-500);
+            //generate a random height for the tree between 30 and 80
+            var treeHeight= Math.floor((Math.random()*80)+30);
+
+  //Creating the trunk
+
+            //create the geometry, material and set the color for the trunk
+            const treeGeometry = new THREE.CylinderGeometry( 5, 5, treeHeight, 18 );
+            const trunkMaterial = new THREE.MeshStandardMaterial( {
+              color: 0x571300
+            } );
+            //create and place the actual trunk
+            
+            const trunk = new THREE.Mesh( treeGeometry, trunkMaterial );
+            trunk.position.set(treeX,treeHeight/2,treeZ);
+            trunk.castShadow=true;
+            scene.add(trunk);   
+            // Change the color of leaves to be slightly dark in tree with an even number for treeHeight
+            const leafMaterial = new THREE.MeshStandardMaterial( {
+            color: 0x6EBA53});
+            if(treeHeight%2==0){
+              leafMaterial.color.setHex(0x54923c);
+            }
+             //give the trunk a slight bend if the treeHeight is divisible by 3
+            if((treeHeight)%3==0){
+              trunk.rotation.set(0.1,0.1,-0.1)
+            }
+            // use a Icosahedron for leaves if the tree is less than 50 height 
+            if(treeHeight<60){
+              const smallTreeGeometry= new THREE.IcosahedronGeometry(treeHeight/2,0 ) //the size of Icosahedron is based on the height of the tree divided by two           
+              const smallTreeTop = new THREE.Mesh( smallTreeGeometry, leafMaterial );
+              scene.add(smallTreeTop)
+              smallTreeTop.castShadow=true;
+              smallTreeTop.position.set(treeX,treeHeight,treeZ);
+             }
+              //If the treeHeight is greater than 60 the leaves will be made of 2 cones stacked on each other  
+             else{
+               //create the geometry for the bottom cone of the tree
+              const bigTreeBottomGeometry = new THREE.ConeGeometry( treeHeight/2.5, 60, 6 );//the width of the bottom cone is based on the height of the tree divided by 2.5 
+              const bigTreeBottom = new THREE.Mesh( bigTreeBottomGeometry, leafMaterial );
+              bigTreeBottom.castShadow=true;
+              bigTreeBottom.position.set(treeX,treeHeight,treeZ); //set position for bottom cone
+              scene.add( bigTreeBottom );
+
+              //create the geometry for the top cone of the tree
+              const bigTreeTopGeometry = new THREE.ConeGeometry( treeHeight/3, 40, 6 );//the width of the top cone is based on the height of the tree divided by 3
+              const bigTreeTop = new THREE.Mesh( bigTreeTopGeometry, leafMaterial );
+              bigTreeTop.position.set(treeX,treeHeight+30,treeZ);//set position for top cone
+              scene.add( bigTreeTop );
+             }
+
+        };
+        //draw the scene
+        function animate() {
+	      requestAnimationFrame( animate );
+	      renderer.render( scene, camera );
+        };
+      animate();
+     };
+  </script>
+  </head>
+  <body></body>
+  </html>
